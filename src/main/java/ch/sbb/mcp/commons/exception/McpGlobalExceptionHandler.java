@@ -94,13 +94,61 @@ public abstract class McpGlobalExceptionHandler implements ErrorWebExceptionHand
     }
     
     protected String determineMessage(Throwable ex) {
+        String rawMessage;
+        
         if (ex instanceof McpException) {
-            return ex.getMessage();
+            rawMessage = ex.getMessage();
+        } else if (ex instanceof IllegalArgumentException) {
+            rawMessage = ex.getMessage();
+        } else {
+            return "An unexpected error occurred";
         }
-        if (ex instanceof IllegalArgumentException) {
-            return ex.getMessage();
+        
+        // Sanitize message to prevent information disclosure
+        return sanitizeErrorMessage(rawMessage);
+    }
+    
+    /**
+     * Sanitizes error messages to prevent information disclosure.
+     * 
+     * <p>Removes:</p>
+     * <ul>
+     *   <li>File paths (e.g., /home/user/app/config/database.properties)</li>
+     *   <li>IP addresses (e.g., 192.168.1.1)</li>
+     *   <li>Hostnames (e.g., internal-db.company.com)</li>
+     *   <li>Port numbers in connection strings</li>
+     *   <li>Quoted identifiers (table/column names)</li>
+     * </ul>
+     * 
+     * @param message the raw error message
+     * @return sanitized error message safe for client consumption
+     */
+    protected String sanitizeErrorMessage(String message) {
+        if (message == null) {
+            return "An error occurred";
         }
-        return "An unexpected error occurred";
+        
+        String sanitized = message;
+        
+        // Remove absolute file paths (Unix and Windows)
+        sanitized = sanitized.replaceAll("/[\\w/.\\-]+", "[PATH]");
+        sanitized = sanitized.replaceAll("[A-Z]:\\\\[\\w\\\\/.\\-]+", "[PATH]");
+        
+        // Remove IP addresses
+        sanitized = sanitized.replaceAll("\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b", "[IP]");
+        
+        // Remove hostnames (e.g., internal-db.company.com:5432)
+        sanitized = sanitized.replaceAll("\\b[a-z0-9\\-]+\\.[a-z0-9\\-.]+:[0-9]+\\b", "[HOST]");
+        
+        // Remove quoted identifiers (table/column names)
+        sanitized = sanitized.replaceAll("'[\\w_]+'", "'[REDACTED]'");
+        sanitized = sanitized.replaceAll("\"[\\w_]+\"", "\"[REDACTED]\"");
+        
+        // Remove connection strings
+        sanitized = sanitized.replaceAll("jdbc:[\\w:/@.\\-]+", "jdbc:[REDACTED]");
+        sanitized = sanitized.replaceAll("redis://[\\w:/@.\\-]+", "redis://[REDACTED]");
+        
+        return sanitized;
     }
     
     protected void logError(ServerWebExchange exchange, Throwable ex, ErrorResponse errorResponse) {

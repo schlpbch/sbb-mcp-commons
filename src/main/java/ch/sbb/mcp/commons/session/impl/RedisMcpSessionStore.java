@@ -282,8 +282,27 @@ public class RedisMcpSessionStore implements McpSessionStore {
     
     /**
      * Converts a session ID to a Redis key with the appropriate prefix.
+     * 
+     * <p><strong>Security:</strong> Validates that the session ID is a valid UUID
+     * to prevent Redis command injection attacks.
+     * 
+     * @param sessionId the session ID to convert
+     * @return Redis key with prefix
+     * @throws IllegalArgumentException if session ID is not a valid UUID format
      */
     private String toKey(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("Session ID cannot be null or empty");
+        }
+        
+        // Validate UUID format (lowercase hex with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+        // This prevents Redis command injection via malicious session IDs
+        if (!sessionId.matches("^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")) {
+            throw new IllegalArgumentException(
+                "Invalid session ID format. Expected UUID format: " + sessionId
+            );
+        }
+        
         return KEY_PREFIX + sessionId;
     }
 }

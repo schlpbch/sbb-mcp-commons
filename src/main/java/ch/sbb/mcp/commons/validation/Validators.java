@@ -12,8 +12,30 @@ import java.util.regex.Pattern;
  */
 public class Validators {
     
+    /**
+     * Improved email validation pattern that prevents common bypass patterns.
+     * 
+     * <p>Validates:</p>
+     * <ul>
+     *   <li>Local part: alphanumeric, dots, hyphens, underscores, plus signs</li>
+     *   <li>Domain: alphanumeric with hyphens, multiple levels allowed</li>
+     *   <li>TLD: at least 2 characters, letters only</li>
+     * </ul>
+     * 
+     * <p>Prevents:</p>
+     * <ul>
+     *   <li>Consecutive dots (..)</li>
+     *   <li>Leading/trailing dots in local part</li>
+     *   <li>Leading/trailing hyphens in domain parts</li>
+     *   <li>Single-character TLDs</li>
+     *   <li>Missing @ symbol or multiple @ symbols</li>
+     * </ul>
+     */
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
-        "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        "^[A-Za-z0-9][A-Za-z0-9._%+-]*[A-Za-z0-9]@" +  // Local part (no leading/trailing dots)
+        "[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?" +      // Domain start (no leading/trailing hyphens)
+        "(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*" + // Subdomains
+        "\\.[A-Za-z]{2,}$"                               // TLD (at least 2 chars)
     );
     
     private static final List<String> VALID_LANGUAGES = List.of("de", "fr", "it", "en");

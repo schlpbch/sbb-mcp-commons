@@ -1,6 +1,5 @@
 package ch.sbb.mcp.commons.session;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,12 +16,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * field uses {@link AtomicReference} for lock-free updates, and {@code attributes} uses
  * {@link ConcurrentHashMap} for concurrent access.
  * 
+ * <p><strong>Security:</strong> This class no longer uses polymorphic type handling to prevent
+ * Jackson deserialization vulnerabilities (CVE-2017-7525). Session attributes should only contain
+ * simple, trusted types.
+ * 
  * @param sessionId Unique session identifier (UUID v4)
  * @param createdAt Timestamp when the session was created
  * @param lastAccessedAt Atomic reference to the last access timestamp (thread-safe)
  * @param attributes Concurrent map for storing session-scoped data
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public record McpSession(
     String sessionId,
     Instant createdAt,

@@ -123,38 +123,84 @@ public final class ArgumentExtractor {
      *   <li>Missing values (returns default)</li>
      * </ul>
      * 
+     * <p><strong>Security:</strong> Validates string length and checks for null bytes
+     * to prevent injection attacks.</p>
+     * 
      * @param arguments The arguments map
      * @param key The key to extract
      * @param defaultValue The default value if key is missing
      * @return The extracted string value or default
+     * @throws IllegalArgumentException if string is too long or contains null bytes
      */
     public static String extractString(Map<String, Object> arguments, String key, String defaultValue) {
         Object value = arguments.get(key);
         if (value == null) {
             return defaultValue;
         }
+        
+        String result;
         if (value instanceof String str) {
-            return str;
+            result = str;
+        } else {
+            result = value.toString();
         }
-        return value.toString();
+        
+        // Security: Validate string length to prevent DoS
+        if (result.length() > 10000) {
+            throw new IllegalArgumentException(
+                "String value for '" + key + "' exceeds maximum length of 10000 characters"
+            );
+        }
+        
+        // Security: Detect null bytes (potential injection)
+        if (result.indexOf('\0') != -1) {
+            throw new IllegalArgumentException(
+                "String value for '" + key + "' contains null bytes"
+            );
+        }
+        
+        return result;
     }
     
     /**
      * Extracts a string value from arguments (nullable version).
      * 
+     * <p><strong>Security:</strong> Validates string length and checks for null bytes
+     * to prevent injection attacks.</p>
+     * 
      * @param arguments The arguments map
      * @param key The key to extract
      * @return The extracted string value or null if not present
+     * @throws IllegalArgumentException if string is too long or contains null bytes
      */
     public static String extractStringNullable(Map<String, Object> arguments, String key) {
         Object value = arguments.get(key);
         if (value == null) {
             return null;
         }
+        
+        String result;
         if (value instanceof String str) {
-            return str;
+            result = str;
+        } else {
+            result = value.toString();
         }
-        return value.toString();
+        
+        // Security: Validate string length to prevent DoS
+        if (result.length() > 10000) {
+            throw new IllegalArgumentException(
+                "String value for '" + key + "' exceeds maximum length of 10000 characters"
+            );
+        }
+        
+        // Security: Detect null bytes (potential injection)
+        if (result.indexOf('\0') != -1) {
+            throw new IllegalArgumentException(
+                "String value for '" + key + "' contains null bytes"
+            );
+        }
+        
+        return result;
     }
     
     /**
