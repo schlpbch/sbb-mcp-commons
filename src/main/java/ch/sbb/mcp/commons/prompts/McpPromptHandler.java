@@ -5,7 +5,6 @@ import ch.sbb.mcp.commons.protocol.McpResponse;
 import ch.sbb.mcp.commons.prompts.McpPromptRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -15,8 +14,9 @@ import java.util.Map;
  * Handler for MCP prompt operations.
  * 
  * <p>Handles prompt listing and retrieval operations.</p>
+ * 
+ * <p>This class is automatically configured by {@link ch.sbb.mcp.commons.prompts.config.McpPromptAutoConfiguration}.</p>
  */
-@Component
 public class McpPromptHandler {
     
     private static final Logger log = LoggerFactory.getLogger(McpPromptHandler.class);
