@@ -39,7 +39,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>ch.sbb.mcp</groupId>
     <artifactId>sbb-mcp-commons</artifactId>
-    <version>1.6.1</version>
+    <version>1.7.0</version>
 </dependency>
 ```
 
@@ -214,6 +214,7 @@ open target/site/jacoco/index.html
 ```
 
 **Coverage Highlights:**
+
 - Prompt Infrastructure: 100% instruction coverage
 - Overall Project: 54% instruction coverage, 69% branch coverage
 
@@ -251,9 +252,11 @@ spring.data.redis.port: 6379
 ## 🎯 Use Cases
 
 ### Journey Service MCP
+
 Production MCP server for Swiss public transport journey planning.
 
 ### Swiss Mobility MCP  
+
 MCP server for Swiss Mobility API integration (ticketing/booking).
 
 ## 🤝 Contributing
