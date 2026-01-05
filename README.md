@@ -19,7 +19,7 @@ This library provides common infrastructure code that can be reused across multi
 <dependency>
     <groupId>ch.sbb.mcp</groupId>
     <artifactId>sbb-mcp-commons</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -34,6 +34,7 @@ public class MyTool {
         Validators.requireNonEmpty(origin, "origin");
         Validators.requireNonEmpty(destination, "destination");
         Validators.requirePositive(limit, "limit");
+        Validators.requireValidDate(date, "date");
         
         // Business logic...
     }
@@ -83,42 +84,58 @@ cd sbb-mcp-commons
 mvn clean install
 ```
 
-## Testing
+### Testing
 
 ```bash
 mvn test
 ```
 
+### Test Coverage
+
+This project uses JaCoCo for test coverage reporting. To generate a coverage report:
+
+```bash
+mvn clean test
+```
+
+The report will be generated at `target/site/jacoco/index.html`.
+
 ## Components
 
 ### Validation (`ch.sbb.mcp.commons.validation`)
+
 - `Validators` - Static validation methods
 - `ValidationException` - Exception for validation failures
 
 ### Transformation (`ch.sbb.mcp.commons.transformation`)
+
 - `ResponseTransformer<SOURCE, TARGET>` - Generic transformer interface
 - `BaseResponseTransformer<SOURCE, TARGET>` - Base class with utility methods
 
 ### Model (`ch.sbb.mcp.commons.model`)
+
 - `BaseApiRequest` - Base class for API requests
 - `BaseApiResponse` - Base class for API responses
 - `ApiError` - Structured error information
 
-### Handler (`ch.sbb.mcp.commons.handler`) - **Phase 2**
+### Handler (`ch.sbb.mcp.commons.handler`)
+
 - `BaseToolHandler<INPUT, OUTPUT>` - Base class for MCP tool handlers
 - `ToolResult` - Tool execution result wrapper
 
-### Service (`ch.sbb.mcp.commons.service`) - **Phase 2**
+### Service (`ch.sbb.mcp.commons.service`)
+
 - `BaseService` - Base class for service layer with metrics and retry patterns
 
-### Client (`ch.sbb.mcp.commons.client`) - **Phase 3**
+### Client (`ch.sbb.mcp.commons.client`)
+
 - `BaseApiClient<ERROR_TYPE>` - Base class for API clients with HTTP operations
 - `WebClientFactory` - Factory for creating configured WebClient instances
 - `ApiClientException` - Exception for API client errors
 
 ## Version
 
-Current version: 1.0.0-SNAPSHOT
+Current version: 1.1.0
 
 ## License
 
