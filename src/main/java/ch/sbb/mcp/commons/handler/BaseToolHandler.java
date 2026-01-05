@@ -1,14 +1,14 @@
 package ch.sbb.mcp.commons.handler;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-import java.util.UUID;
+import java.util.Map;
 
 /**
- * Base class for MCP tool handlers with common logic for validation, logging, and error handling.
+ * Base class for MCP tool handlers with built-in validation, logging, and error handling.
+ * Compatible with McpTool interface - tools can extend this for additional functionality.
  *
  * @param <INPUT> the input type after parsing and validation
  * @param <OUTPUT> the output type from business logic
@@ -19,34 +19,30 @@ public abstract class BaseToolHandler<INPUT, OUTPUT> {
     
     /**
      * Execute tool with automatic validation, logging, and error handling.
+     * Compatible with McpTool.invoke() signature.
      *
-     * @param arguments the raw JSON arguments from MCP client
-     * @return Mono containing the tool result
+     * @param arguments the arguments from MCP client as Map
+     * @return Mono containing the output
      */
-    public final Mono<ToolResult> execute(JsonNode arguments) {
+    public final Mono<OUTPUT> execute(Map<String, Object> arguments) {
         String toolName = getToolName();
-        String requestId = UUID.randomUUID().toString();
+        long startTime = System.currentTimeMillis();
         
-        return Mono.defer(() -> {
-            log.info("[{}] Executing tool: {} with requestId: {}", toolName, toolName, requestId);
-            log.debug("[{}] Arguments: {}", toolName, arguments);
-            
-            try {
-                // 1. Validate and parse input
-                INPUT input = validateAndParse(arguments);
-                log.debug("[{}] Validated input: {}", toolName, input);
-                
-                // 2. Execute business logic
-                return executeInternal(input)
-                    .doOnNext(output -> log.info("[{}] Tool completed successfully", toolName))
-                    .doOnNext(output -> log.debug("[{}] Output: {}", toolName, output))
-                    .map(this::formatOutput)
-                    .onErrorResume(error -> handleError(error, toolName, requestId));
-                    
-            } catch (Exception e) {
-                log.error("[{}] Validation failed: {}", toolName, e.getMessage());
-                return handleError(e, toolName, requestId);
-            }
+        return Mono.fromCallable(() -> {
+            log.debug("[{}] Validating arguments: {}", toolName, arguments);
+            return validateAndParse(arguments);
+        })
+        .flatMap(input -> {
+            log.debug("[{}] Executing with input: {}", toolName, input);
+            return executeInternal(input);
+        })
+        .doOnSuccess(output -> {
+            long elapsed = System.currentTimeMillis() - startTime;
+            log.info("[{}] Completed successfully in {}ms", toolName, elapsed);
+        })
+        .doOnError(error -> {
+            long elapsed = System.currentTimeMillis() - startTime;
+            log.error("[{}] Failed after {}ms: {}", toolName, elapsed, error.getMessage(), error);
         });
     }
     
@@ -59,114 +55,184 @@ public abstract class BaseToolHandler<INPUT, OUTPUT> {
     protected abstract Mono<OUTPUT> executeInternal(INPUT input);
     
     /**
-     * Subclasses define the tool name.
+     * Subclasses define the tool name for logging.
      *
-     * @return the tool name (e.g., "findTrips", "getPricing")
+     * @return the tool name (e.g., "getWeather", "findTrips")
      */
     protected abstract String getToolName();
     
     /**
      * Subclasses define input validation and parsing logic.
+     * Use Validators from ch.sbb.mcp.commons.validation for validation.
      *
-     * @param arguments the raw JSON arguments
+     * @param arguments the raw arguments as Map
      * @return the validated and parsed input object
-     * @throws Exception if validation fails
+     * @throws IllegalArgumentException if validation fails
      */
-    protected abstract INPUT validateAndParse(JsonNode arguments) throws Exception;
+    protected abstract INPUT validateAndParse(Map<String, Object> arguments);
+    
+    // ========== Helper Methods for Argument Extraction ==========
     
     /**
-     * Subclasses define output formatting logic.
+     * Get a required string field from arguments.
      *
-     * @param output the business logic output
-     * @return the formatted tool result
-     */
-    protected abstract ToolResult formatOutput(OUTPUT output);
-    
-    /**
-     * Common error handling logic.
-     *
-     * @param error the error that occurred
-     * @param toolName the tool name
-     * @param requestId the request ID
-     * @return Mono containing error tool result
-     */
-    private Mono<ToolResult> handleError(Throwable error, String toolName, String requestId) {
-        log.error("[{}] Tool failed with requestId: {}", toolName, requestId, error);
-        
-        String errorMessage = error.getMessage() != null 
-            ? error.getMessage() 
-            : "An unexpected error occurred";
-            
-        return Mono.just(ToolResult.error(errorMessage, error.getClass().getSimpleName()));
-    }
-    
-    /**
-     * Helper method to get a required string field from JSON.
-     *
-     * @param node the JSON node
-     * @param fieldName the field name
+     * @param args the arguments map
+     * @param key the field name
      * @return the field value
-     * @throws IllegalArgumentException if field is missing or not a string
+     * @throws IllegalArgumentException if field is missing
      */
-    protected String getRequiredString(JsonNode node, String fieldName) {
-        if (node == null || !node.has(fieldName)) {
-            throw new IllegalArgumentException("Missing required field: " + fieldName);
+    protected String getRequiredString(Map<String, Object> args, String key) {
+        Object value = args.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required parameter: " + key);
         }
-        JsonNode fieldNode = node.get(fieldName);
-        if (!fieldNode.isTextual()) {
-            throw new IllegalArgumentException("Field " + fieldName + " must be a string");
-        }
-        return fieldNode.asText();
+        return value.toString();
     }
     
     /**
-     * Helper method to get an optional string field from JSON.
+     * Get an optional string field from arguments.
      *
-     * @param node the JSON node
-     * @param fieldName the field name
+     * @param args the arguments map
+     * @param key the field name
      * @param defaultValue the default value if field is missing
      * @return the field value or default
      */
-    protected String getOptionalString(JsonNode node, String fieldName, String defaultValue) {
-        if (node == null || !node.has(fieldName)) {
-            return defaultValue;
-        }
-        JsonNode fieldNode = node.get(fieldName);
-        return fieldNode.isTextual() ? fieldNode.asText() : defaultValue;
+    protected String getOptionalString(Map<String, Object> args, String key, String defaultValue) {
+        Object value = args.get(key);
+        return value != null ? value.toString() : defaultValue;
     }
     
     /**
-     * Helper method to get a required integer field from JSON.
+     * Get a required double field from arguments.
      *
-     * @param node the JSON node
-     * @param fieldName the field name
+     * @param args the arguments map
+     * @param key the field name
      * @return the field value
-     * @throws IllegalArgumentException if field is missing or not an integer
+     * @throws IllegalArgumentException if field is missing or invalid
      */
-    protected int getRequiredInt(JsonNode node, String fieldName) {
-        if (node == null || !node.has(fieldName)) {
-            throw new IllegalArgumentException("Missing required field: " + fieldName);
+    protected double getRequiredDouble(Map<String, Object> args, String key) {
+        Object value = args.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required parameter: " + key);
         }
-        JsonNode fieldNode = node.get(fieldName);
-        if (!fieldNode.isInt()) {
-            throw new IllegalArgumentException("Field " + fieldName + " must be an integer");
+        if (value instanceof Number n) {
+            return n.doubleValue();
         }
-        return fieldNode.asInt();
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number for " + key + ": " + value);
+        }
     }
     
     /**
-     * Helper method to get an optional integer field from JSON.
+     * Get an optional double field from arguments.
      *
-     * @param node the JSON node
-     * @param fieldName the field name
+     * @param args the arguments map
+     * @param key the field name
      * @param defaultValue the default value if field is missing
      * @return the field value or default
      */
-    protected int getOptionalInt(JsonNode node, String fieldName, int defaultValue) {
-        if (node == null || !node.has(fieldName)) {
+    protected double getOptionalDouble(Map<String, Object> args, String key, double defaultValue) {
+        Object value = args.get(key);
+        if (value == null) {
             return defaultValue;
         }
-        JsonNode fieldNode = node.get(fieldName);
-        return fieldNode.isInt() ? fieldNode.asInt() : defaultValue;
+        if (value instanceof Number n) {
+            return n.doubleValue();
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * Get a required integer field from arguments.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @return the field value
+     * @throws IllegalArgumentException if field is missing or invalid
+     */
+    protected int getRequiredInt(Map<String, Object> args, String key) {
+        Object value = args.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required parameter: " + key);
+        }
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer for " + key + ": " + value);
+        }
+    }
+    
+    /**
+     * Get an optional integer field from arguments.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param defaultValue the default value if field is missing
+     * @return the field value or default
+     */
+    protected int getOptionalInt(Map<String, Object> args, String key, int defaultValue) {
+        Object value = args.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * Get a required boolean field from arguments.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @return the field value
+     * @throws IllegalArgumentException if field is missing
+     */
+    protected boolean getRequiredBoolean(Map<String, Object> args, String key) {
+        Object value = args.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required parameter: " + key);
+        }
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        return Boolean.parseBoolean(value.toString());
+    }
+    
+    /**
+     * Get an optional boolean field from arguments.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param defaultValue the default value if field is missing
+     * @return the field value or default
+     */
+    protected boolean getOptionalBoolean(Map<String, Object> args, String key, boolean defaultValue) {
+        Object value = args.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        try {
+            return Boolean.parseBoolean(value.toString());
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 }
