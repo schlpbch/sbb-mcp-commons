@@ -1,142 +1,277 @@
 # SBB MCP Commons
 
-Shared library for SBB MCP servers (journey-service-mcp, swiss-mobility-mcp).
+[![Tests](https://img.shields.io/badge/tests-196%20passing-brightgreen)](https://github.com/schlpbch/sbb-mcp-commons)
+[![Coverage](https://img.shields.io/badge/coverage-54%25-yellow)](https://github.com/schlpbch/sbb-mcp-commons)
+[![Java](https://img.shields.io/badge/java-25-blue)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/spring--boot-3.2.3-green)](https://spring.io/projects/spring-boot)
 
-## Overview
+Shared infrastructure library for SBB Model Context Protocol (MCP) servers, providing reusable components for building production-ready MCP services.
 
-This library provides common infrastructure code that can be reused across multiple MCP server implementations:
+## 🎯 Overview
 
-- **Validation Framework**: Reusable validators for common input validation
-- **Response Transformation**: Generic transformers for API response mapping
-- **API Models**: Base classes for requests and responses
-- **Exception Handling**: Common exception types
+`sbb-mcp-commons` is a comprehensive Spring Boot library that provides:
 
-## Usage
+- **🔧 Auto-Configuration** - Zero-configuration Spring Boot integration
+- **💬 Prompt Infrastructure** - MCP prompt discovery and handling
+- **📦 Session Management** - Stateful reactive session store with Redis support
+- **⚠️ Exception Handling** - Standardized MCP error responses
+- **✅ Validation Framework** - Reusable input validators
+- **🔄 API Client** - Resilient HTTP client with retry and circuit breaker
+- **🗺️ GeoJSON Utilities** - Geometry validation and processing
+- **🛠️ Utilities** - Date/time parsing, argument extraction, and more
 
-### Maven Dependency
+## 📚 Documentation
+
+- [Architecture Overview](docs/architecture/README.md) - System design and component interactions
+- [Quick Start Guide](docs/guides/quick-start.md) - Get started in 5 minutes
+- [Auto-Configuration Guide](docs/guides/auto-configuration.md) - Understanding Spring Boot integration
+- [Prompt Infrastructure](docs/guides/prompts.md) - Building MCP prompts
+- [Session Management](docs/guides/sessions.md) - Managing stateful sessions
+- [API Reference](docs/api/README.md) - Complete API documentation
+
+## 🚀 Quick Start
+
+### Installation
+
+Add to your `pom.xml`:
 
 ```xml
 <dependency>
     <groupId>ch.sbb.mcp</groupId>
     <artifactId>sbb-mcp-commons</artifactId>
-    <version>1.1.0</version>
+    <version>1.6.1</version>
 </dependency>
 ```
 
-### Validation Framework
+### Basic Usage
+
+#### 1. Auto-Configuration (Zero Config!)
+
+Simply add the dependency - beans are auto-configured:
 
 ```java
-import ch.sbb.mcp.commons.validation.Validators;
-
-public class MyTool {
-    public void execute(String origin, String destination, int limit) {
-        // Validate inputs
-        Validators.requireNonEmpty(origin, "origin");
-        Validators.requireNonEmpty(destination, "destination");
-        Validators.requirePositive(limit, "limit");
-        Validators.requireValidDate(date, "date");
-        
-        // Business logic...
+@SpringBootApplication
+public class MyMcpServer {
+    public static void main(String[] args) {
+        SpringApplication.run(MyMcpServer.class, args);
     }
 }
 ```
 
-### Response Transformation
+#### 2. Define Prompts
 
 ```java
-import ch.sbb.mcp.commons.transformation.BaseResponseTransformer;
-
 @Component
-public class TripTransformer extends BaseResponseTransformer<ApiTrip, DomainTrip> {
-    
+public class MyPrompts implements McpPromptProvider {
     @Override
-    public DomainTrip transform(ApiTrip apiTrip) {
-        return DomainTrip.builder()
-            .id(apiTrip.getId())
-            .duration(formatDuration(apiTrip.getDurationMinutes()))
-            .departureTime(formatDateTime(apiTrip.getDepartureTime()))
-            .build();
+    public List<McpPrompt> getPrompts() {
+        return List.of(
+            new McpPrompt(
+                "find-journey",
+                "Find train journeys between stations",
+                List.of(
+                    new McpPromptArgument("from", "Origin station", true),
+                    new McpPromptArgument("to", "Destination station", true)
+                ),
+                "Find train journeys from {from} to {to}"
+            )
+        );
     }
 }
 ```
 
-### API Models
+#### 3. Handle MCP Requests
 
 ```java
-import ch.sbb.mcp.commons.model.BaseApiRequest;
-import ch.sbb.mcp.commons.model.BaseApiResponse;
-
-public class MyRequest extends BaseApiRequest {
-    private String query;
-    // Additional fields...
+@RestController
+public class McpController {
+    
+    private final McpPromptHandler promptHandler;
+    
+    @PostMapping("/mcp")
+    public Mono<McpResponse> handleMcp(@RequestBody McpRequest request) {
+        return switch (request.method()) {
+            case "prompts/list" -> promptHandler.handlePromptsList(request);
+            case "prompts/get" -> promptHandler.handlePromptsGet(request);
+            default -> Mono.just(McpResponse.error(
+                request.id(),
+                McpResponse.McpError.methodNotFound(request.method())
+            ));
+        };
+    }
 }
+```
 
-public class MyResponse extends BaseApiResponse {
-    private List<Result> results;
-    // Additional fields...
+## 🏗️ Architecture
+
+```mermaid
+graph TB
+    subgraph "Host Application"
+        App[Spring Boot App]
+        Tools[MCP Tools]
+        Prompts[Prompt Providers]
+    end
+    
+    subgraph "sbb-mcp-commons"
+        AutoConfig[Auto-Configuration]
+        PromptReg[Prompt Registry]
+        PromptHandler[Prompt Handler]
+        SessionStore[Session Store]
+        Validators[Validators]
+        Client[API Client]
+    end
+    
+    subgraph "External"
+        Redis[(Redis)]
+        APIs[External APIs]
+    end
+    
+    App --> AutoConfig
+    AutoConfig --> PromptReg
+    AutoConfig --> PromptHandler
+    AutoConfig --> SessionStore
+    
+    Prompts -.discovered by.-> PromptReg
+    PromptHandler --> PromptReg
+    Tools --> Validators
+    Tools --> Client
+    
+    SessionStore -.optional.-> Redis
+    Client --> APIs
+    
+    style AutoConfig fill:#e1f5e1
+    style PromptReg fill:#e1f5e1
+    style PromptHandler fill:#e1f5e1
+```
+
+## 📦 Core Components
+
+### Auto-Configuration
+
+Automatic Spring Boot integration - no manual bean registration required:
+
+- `McpPromptAutoConfiguration` - Prompt infrastructure
+- `McpSessionAutoConfiguration` - Session management
+
+### Prompt Infrastructure
+
+- `McpPromptRegistry` - Auto-discovers and registers prompts
+- `McpPromptHandler` - Handles `prompts/list` and `prompts/get` requests
+- `McpPromptProvider` - Interface for defining prompts
+
+### Session Management
+
+- `McpSessionStore` - Reactive session storage interface
+- `InMemoryMcpSessionStore` - In-memory implementation (default)
+- `RedisMcpSessionStore` - Redis-backed implementation (auto-configured when Redis is available)
+
+### Exception Handling
+
+- `McpException` - Base exception with MCP error codes
+- `McpValidationException` - Validation errors (-32602)
+- `McpResourceNotFoundException` - Resource not found (-32001)
+- `McpGlobalExceptionHandler` - Global exception handling
+
+### Validation
+
+```java
+Validators.requireNonEmpty(origin, "origin");
+Validators.requirePositive(limit, "limit");
+Validators.requireValidDate(date, "date");
+Validators.requireInRange(limit, 1, 100, "limit");
+```
+
+### API Client
+
+Resilient HTTP client with retry and circuit breaker:
+
+```java
+@Component
+public class JourneyClient extends BaseApiClient<ApiError> {
+    
+    public Mono<JourneyResponse> findJourneys(String from, String to) {
+        return get("/journeys")
+            .queryParam("from", from)
+            .queryParam("to", to)
+            .retrieve(JourneyResponse.class);
+    }
 }
 ```
 
-## Building
+## 🧪 Testing
 
-```bash
-cd sbb-mcp-commons
-mvn clean install
-```
-
-### Testing
-
-```bash
-mvn test
-```
-
-### Test Coverage
-
-This project uses JaCoCo for test coverage reporting. To generate a coverage report:
+Run all 196 tests:
 
 ```bash
 mvn clean test
 ```
 
-The report will be generated at `target/site/jacoco/index.html`.
+View coverage report:
 
-## Components
+```bash
+mvn clean test
+open target/site/jacoco/index.html
+```
 
-### Validation (`ch.sbb.mcp.commons.validation`)
+**Coverage Highlights:**
+- Prompt Infrastructure: 100% instruction coverage
+- Overall Project: 54% instruction coverage, 69% branch coverage
 
-- `Validators` - Static validation methods
-- `ValidationException` - Exception for validation failures
+## 📊 Package Overview
 
-### Transformation (`ch.sbb.mcp.commons.transformation`)
+| Package | Purpose | Coverage |
+|---------|---------|----------|
+| `prompts` | MCP prompt discovery and handling | 100% ✅ |
+| `prompts.config` | Auto-configuration for prompts | 100% ✅ |
+| `util` | Date/time, argument extraction | 94% ✅ |
+| `context` | Request context management | 92% ✅ |
+| `exception` | Exception handling framework | 91% ✅ |
+| `transformation` | Response transformers | 86% |
+| `validation` | Input validation | 85% |
+| `session` | Session management | 80% |
+| `client` | HTTP client utilities | 70% |
 
-- `ResponseTransformer<SOURCE, TARGET>` - Generic transformer interface
-- `BaseResponseTransformer<SOURCE, TARGET>` - Base class with utility methods
+## 🔧 Configuration
 
-### Model (`ch.sbb.mcp.commons.model`)
+### Application Properties
 
-- `BaseApiRequest` - Base class for API requests
-- `BaseApiResponse` - Base class for API responses
-- `ApiError` - Structured error information
+```yaml
+# Session Management
+mcp.session.ttl: PT1H                          # Session TTL (default: 1 hour)
+mcp.session.circuit-breaker.failure-rate-threshold: 50
+mcp.session.circuit-breaker.wait-duration: 60s
+mcp.session.retry.max-attempts: 3
+mcp.session.retry.wait-duration: 100ms
 
-### Handler (`ch.sbb.mcp.commons.handler`)
+# Redis (optional - auto-configured when available)
+spring.data.redis.host: localhost
+spring.data.redis.port: 6379
+```
 
-- `BaseToolHandler<INPUT, OUTPUT>` - Base class for MCP tool handlers
-- `ToolResult` - Tool execution result wrapper
+## 🎯 Use Cases
 
-### Service (`ch.sbb.mcp.commons.service`)
+### Journey Service MCP
+Production MCP server for Swiss public transport journey planning.
 
-- `BaseService` - Base class for service layer with metrics and retry patterns
+### Swiss Mobility MCP  
+MCP server for Swiss Mobility API integration (ticketing/booking).
 
-### Client (`ch.sbb.mcp.commons.client`)
+## 🤝 Contributing
 
-- `BaseApiClient<ERROR_TYPE>` - Base class for API clients with HTTP operations
-- `WebClientFactory` - Factory for creating configured WebClient instances
-- `ApiClientException` - Exception for API client errors
+1. Create feature branch
+2. Add tests (maintain >80% coverage)
+3. Update documentation
+4. Submit pull request
 
-## Version
+## 📝 Changelog
 
-Current version: 1.1.0
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-## License
+## 📄 License
 
 SBB
+
+## 🔗 Related Projects
+
+- [journey-service-mcp](https://github.com/schlpbch/journey-service-mcp) - Journey planning MCP server
+- [swiss-mobility-mcp](https://github.com/schlpbch/swiss-mobility-mcp) - Swiss Mobility MCP server
