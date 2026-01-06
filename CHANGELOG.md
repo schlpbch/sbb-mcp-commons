@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-01-06
+
+### 🧪 Test Coverage Improvements
+
+#### Phase 1: High-Priority Infrastructure Components
+
+- **New Test Classes** (50+ test methods, 100+ assertions)
+  - `McpToolRegistryTest` (8 tests) - Tool discovery and invocation
+  - `BaseToolHandlerTest` (20+ tests) - Handler execution and argument extraction
+  - `SimpleRateLimiterTest` (15+ tests) - Rate limiting and thread safety
+  - `McpResourceTest` (9 tests) - Resource interface and URI generation
+
+### 📊 Coverage Improvements
+
+| Component           | Before | After |
+| ------------------- | ------ | ----- |
+| `McpToolRegistry`   | 0%     | ~90%  |
+| `BaseToolHandler`   | 0%     | ~85%  |
+| `SimpleRateLimiter` | 0%     | ~90%  |
+| `McpResource`       | 0%     | ~80%  |
+
+### 🔧 Technical Changes
+
+- **Java Version**: Migrated from Java 25 → Java 21 (LTS)
+  - Ensures Mockito/ByteBuddy compatibility
+  - Provides stable testing infrastructure
+  - Aligns with production deployment standards
+
+### ✅ Test Results
+
+- **309 tests passing** (0 failures, 2 skipped)
+- **Thread safety verified** for concurrent rate limiting
+- **Reactive testing** with StepVerifier
+- **Comprehensive edge cases** covered
+
+### 📝 Test Highlights
+
+- Auto-discovery of Spring beans (McpToolRegistry)
+- Argument extraction with type coercion (BaseToolHandler)
+- Concurrent request handling (SimpleRateLimiter)
+- URI generation and normalization (McpResource)
+- Error propagation and validation testing
+
+### 📚 Documentation
+
+- Comprehensive implementation plan
+- Detailed walkthrough with test descriptions
+- Task breakdown for future phases
+
+---
+
 ## [1.7.0] - 2026-01-05
 
 ### 🔒 Security Hardening
