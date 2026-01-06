@@ -2,7 +2,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-196%20passing-brightgreen)](https://github.com/schlpbch/sbb-mcp-commons)
 [![Coverage](https://img.shields.io/badge/coverage-54%25-yellow)](https://github.com/schlpbch/sbb-mcp-commons)
-[![Java](https://img.shields.io/badge/java-25-blue)](https://openjdk.org/)
+[![Java](https://img.shields.io/badge/java-21-blue)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/spring--boot-3.2.3-green)](https://spring.io/projects/spring-boot)
 
 Shared infrastructure library for SBB Model Context Protocol (MCP) servers, providing reusable components for building production-ready MCP services.
@@ -33,14 +33,53 @@ Shared infrastructure library for SBB Model Context Protocol (MCP) servers, prov
 
 ### Installation
 
-Add to your `pom.xml`:
+#### Option 1: GitHub Packages (Recommended)
+
+This library is published to GitHub Packages. Add to your `pom.xml`:
 
 ```xml
 <dependency>
     <groupId>ch.sbb.mcp</groupId>
     <artifactId>sbb-mcp-commons</artifactId>
-    <version>1.7.0</version>
+    <version>1.8.0</version>
 </dependency>
+```
+
+**Authentication Required:** Configure your `~/.m2/settings.xml`:
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github</id>
+            <username>YOUR_GITHUB_USERNAME</username>
+            <password>YOUR_GITHUB_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+Add the repository to your `pom.xml`:
+
+```xml
+<repositories>
+    <repository>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/schlpbch/sbb-mcp-commons</url>
+    </repository>
+</repositories>
+```
+
+> **Note:** You need a GitHub Personal Access Token with `read:packages` scope. [Create one here](https://github.com/settings/tokens/new?scopes=read:packages).
+
+#### Option 2: Local Installation
+
+Clone and install locally:
+
+```bash
+git clone https://github.com/schlpbch/sbb-mcp-commons.git
+cd sbb-mcp-commons
+mvn clean install
 ```
 
 ### Basic Usage
@@ -221,7 +260,7 @@ open target/site/jacoco/index.html
 ## 📊 Package Overview
 
 | Package | Purpose | Coverage |
-|---------|---------|----------|
+| ------- | ------- | -------- |
 | `prompts` | MCP prompt discovery and handling | 100% ✅ |
 | `prompts.config` | Auto-configuration for prompts | 100% ✅ |
 | `util` | Date/time, argument extraction | 94% ✅ |
@@ -258,6 +297,48 @@ Production MCP server for Swiss public transport journey planning.
 ### Swiss Mobility MCP  
 
 MCP server for Swiss Mobility API integration (ticketing/booking).
+
+## 📦 Publishing (Maintainers)
+
+### Prerequisites
+
+1. **GitHub Personal Access Token** with `write:packages` scope
+   - [Create token here](https://github.com/settings/tokens/new?scopes=write:packages)
+
+2. **Configure Maven Settings** (`~/.m2/settings.xml`):
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github</id>
+            <username>YOUR_GITHUB_USERNAME</username>
+            <password>YOUR_GITHUB_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+### Deploy to GitHub Packages
+
+```bash
+# Ensure all tests pass
+mvn clean test
+
+# Deploy to GitHub Packages
+mvn deploy
+```
+
+The package will be published to: `https://github.com/schlpbch/sbb-mcp-commons/packages`
+
+### Release Checklist
+
+1. Update version in `pom.xml`
+2. Update `CHANGELOG.md`
+3. Run tests: `mvn clean test`
+4. Deploy: `mvn deploy`
+5. Create GitHub release
+6. Update dependent projects
 
 ## 🤝 Contributing
 
