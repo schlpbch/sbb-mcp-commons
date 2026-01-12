@@ -515,6 +515,52 @@ stateDiagram-v2
 
 ---
 
+#### Critical Question: Are Sessions Actually Required?
+
+**Analysis of journey-service-mcp session usage:**
+
+Sessions in journey-service-mcp are used for **two purposes**:
+
+1. **Progress Tracking** (Primary Use)
+   ```java
+   String sessionId = McpRequestContext.getSessionId().orElse(null);
+   ProgressTracker progress = sessionId != null 
+       ? progressService.createTracker(sessionId, NAME, 4)
+       : null;
+   ```
+   
+   **Key observation:** Progress tracking **gracefully degrades** without sessions:
+   - ✅ With session → Send SSE progress notifications to client
+   - ✅ Without session → Tool still works, just no progress updates
+
+2. **SSE Notifications** (Secondary Use)
+   - Enables Server-Sent Events for real-time updates
+   - Only beneficial for clients that support SSE (e.g., Goose)
+
+**What Sessions Are NOT Used For:**
+
+❌ **NOT used for:** State persistence across requests  
+❌ **NOT used for:** Caching user-specific data  
+❌ **NOT used for:** Multi-turn conversation context  
+❌ **NOT used for:** Authentication or authorization  
+❌ **NOT used for:** Domain state management
+
+**Conclusion:**
+
+Sessions in journey-service-mcp are a **UX enhancement, not a requirement**. The domain itself (journey planning) is **stateless** - each query is independent.
+
+**Alternative Architectures:**
+
+| Approach | Trade-offs |
+|----------|------------|
+| **Remove sessions** | ✅ Simpler deployment<br>❌ Lose progress tracking |
+| **Make sessions optional** | ✅ Works stateless, enhanced with sessions<br>✅ Already partially implemented |
+| **Client-side progress token** | ✅ No server state<br>✅ Progress via webhooks<br>❌ Requires client changes |
+
+**Recommendation:** Document that sessions are **optional** in journey-service-mcp. The current implementation already supports graceful degradation, making it compatible with both stateful and stateless deployment models.
+
+---
+
 ### 3. Tool Implementation Patterns
 
 #### journey-service-mcp: Inline Implementation with Progress Tracking
@@ -1397,7 +1443,7 @@ Both approaches are valid; choose based on your use case:
 - Handler abstraction for maintainability
 - BaseToolHandler template for consistency
 - Progress tracking for long operations (>1 second)
-- Session management for multi-turn exploration
+- **Optional** session management for SSE progress notifications (gracefully degrades without sessions)
 
 **Adopt from swiss-mobility-mcp:**
 - `isStateModifying()` flag for safety (critical for LLM guidance)
