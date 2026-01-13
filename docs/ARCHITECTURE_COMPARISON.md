@@ -25,8 +25,8 @@ The SBB MCP ecosystem consists of three interconnected projects that enable AI a
 | Project | Purpose | Tools | Protocol Version |
 |---------|---------|-------|------------------|
 | **journey-service-mcp** | Journey planning (read-heavy) | 13 | 2025-03-26 |
-| **swiss-mobility-mcp** | Ticketing/booking (transactional) | 8 | 2024-11-05 |
-| **sbb-mcp-commons** | Shared infrastructure library | N/A | N/A |
+| **swiss-mobility-mcp** | Ticketing/booking (transactional) | 8 | 2025-03-26 |
+| **sbb-mcp-commons** | Shared infrastructure library | N/A | v1.9.0 |
 
 Both MCP servers are built with Spring Boot 3.x and WebFlux, sharing `sbb-mcp-commons` as their foundation. However, they have **fundamentally different architectural philosophies** driven by their distinct domains:
 
@@ -42,7 +42,7 @@ Both MCP servers are built with Spring Boot 3.x and WebFlux, sharing `sbb-mcp-co
 | State-Modifying Tools | 0 tools | 4 tools (50%) |
 | Streaming | SSE support | No SSE |
 | Progress Tracking | Yes (ProgressTracker) | No |
-| Tool Pattern | BaseToolHandler template | Direct McpTool implementation |
+| Tool Pattern | BaseToolHandler template | BaseMcpTool template (v1.9.0+) |
 | Cache Strategy | Multi-level (24hr uniform) | Single-level (domain-driven TTLs) |
 
 ---
@@ -91,11 +91,13 @@ Both MCP servers are built with Spring Boot 3.x and WebFlux, sharing `sbb-mcp-co
 
 **Key Components:**
 - `McpTool` interface for tool implementation
+- `BaseMcpTool` abstract class (v1.9.0+) - Template method pattern for tools
 - `McpToolRegistry` for auto-discovery
 - `McpPromptHandler` for prompt management
 - `McpResourceHandler` for resource management
 - `McpSessionStore` for session persistence
 - Validation utilities and error handling
+- `McpResult` sealed interface for success/failure responses
 
 ---
 
@@ -820,6 +822,84 @@ public class GetTripPricingTool implements McpTool<JsonNode> {
 
 ---
 
+#### swiss-mobility-mcp: BaseMcpTool Template Pattern (v1.9.0+)
+
+**Pattern Overview (Refactored January 2026):**
+
+All swiss-mobility-mcp tools were refactored to extend `BaseMcpTool<I, O>` from commons v1.9.0, following a standardized template method pattern:
+
+```java
+public abstract class BaseMcpTool<I, O> implements McpTool<McpResult<O>> {
+    // Template method - final, cannot be overridden
+    public final Mono<McpResult<O>> invoke(Map<String, Object> args) {
+        return Mono.fromCallable(() -> validateAndParse(args))
+            .flatMap(this::executeInternal)
+            .map(McpResult::success)
+            .onErrorResume(this::handleError);
+    }
+    
+    // Subclasses implement these
+    protected abstract I validateAndParse(Map<String, Object> args);
+    protected abstract Mono<O> executeInternal(I input);
+}
+```
+
+**Real Example: GetBookingDetailsTool.java (98 lines, refactored)**
+
+```java
+@Component
+public class GetBookingDetailsTool extends BaseMcpTool<GetBookingDetailsTool.Input, JsonNode> {
+
+    // Strongly-typed input record
+    public record Input(String bookingId) {}
+    
+    private final BookingService bookingService;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    protected Input validateAndParse(Map<String, Object> arguments) {
+        String bookingId = (String) arguments.get("bookingId");
+        if (bookingId == null || bookingId.isBlank()) {
+            throw new IllegalArgumentException("bookingId is required and cannot be blank");
+        }
+        return new Input(bookingId);
+    }
+
+    @Override
+    protected Mono<JsonNode> executeInternal(Input input) {
+        return bookingService.getBooking(input.bookingId())
+                .map(objectMapper::valueToTree);
+    }
+
+    @Override
+    public boolean isStateModifying() {
+        return false;
+    }
+}
+```
+
+**Key Features:**
+- ✅ **Template method pattern** for consistent tool structure
+- ✅ **Type-safe inputs** via record classes
+- ✅ **Automatic McpResult wrapping** (Success/Failure)
+- ✅ **Standardized error handling** (IllegalArgumentException → INVALID_INPUT)
+- ✅ **Clean separation** of validation and business logic
+- ✅ **State-modifying flag** for LLM safety
+- ✅ **Reduced boilerplate** (112 lines → 98 lines for GetBookingDetailsTool)
+- ❌ **No progress tracking** (not needed for fast operations)
+
+**Refactored Tools (All 8 swiss-mobility tools):**
+1. GetBookingDetailsTool - Booking retrieval (112 → 98 lines)
+2. CreateBookingTool - Booking creation (215 lines with complex validation)
+3. CancelBookingTool - Booking cancellation
+4. GetOfferDetailsTool - Trip offers
+5. GetRefundOptionsTool - Refund options lookup
+6. GetTicketPdfTool - PDF ticket download
+7. GetTripPricingTool - Pricing calculation (190 lines)
+8. ProcessRefundTool - Refund processing
+
+---
+
 #### swiss-mobility-mcp: Two-Step Booking Flow (Stateful Domain)
 
 **Real Example: CreateBookingTool.java (215 lines)**
@@ -982,14 +1062,17 @@ public record BookingDataItem(
 
 #### Comparison Table
 
-| Aspect | journey-service-mcp | swiss-mobility-mcp |
+| Aspect | journey-service-mcp | swiss-mobility-mcp (v1.9.0+) |
 |--------|--------------------|---------------------|
-| **Lines of Code** | 552 (FindTripsTool) | 215 (CreateBookingTool) |
-| **Validation** | Inline with McpResult | Exception-based |
+| **Lines of Code** | 552 (FindTripsTool) | 98-215 (refactored with BaseMcpTool) |
+| **Tool Base Class** | McpTool (direct) | BaseMcpTool<I, O> (template) |
+| **Validation** | Inline with McpResult | validateAndParse() method |
+| **Business Logic** | Inline in invoke() | executeInternal() method |
+| **Input Types** | Raw Map<String, Object> | Strongly-typed records |
 | **Progress Tracking** | 4-step tracker | None |
 | **Caching** | Custom (McpSearchCacheService) | Spring @Cacheable |
-| **Error Handling** | McpResult.invalidInput() | IllegalArgumentException |
-| **Response Type** | McpResult<JsonNode> | JsonNode |
+| **Error Handling** | Manual McpResult wrapping | Automatic (BaseMcpTool) |
+| **Response Type** | McpResult<JsonNode> | McpResult<JsonNode> (auto-wrapped) |
 | **State-Modifying Flag** | ❌ Missing | ✅ Present (4/8 tools) |
 | **Response Optimization** | 3 modes (compact/standard/detailed) | Single mode |
 | **Size Management** | Truncation at 200KB | No limit |
@@ -1007,10 +1090,22 @@ public record BookingDataItem(
 - **Response optimization** reduces bandwidth
 - **Size management** prevents oversized responses
 
-**swiss-mobility-mcp strengths:**
-- **Simpler code** for straightforward operations
+**swiss-mobility-mcp strengths (v1.9.0+):**
+- **BaseMcpTool template** provides consistent structure
+- **Type-safe inputs** via record classes
+- **Automatic error handling** with standardized McpResult wrapping
 - **State-modifying flag** critical for safety (4/8 tools modify state)
-- **Exception-based** validation is more idiomatic
+- **Cleaner code** with separated validation and business logic
+- **Reduced boilerplate** (12-14% reduction in lines of code)
+
+**Convergence Note (January 2026):**
+With the introduction of `BaseMcpTool` in commons v1.9.0, swiss-mobility-mcp has adopted a template method pattern similar to journey-service-mcp's `BaseToolHandler`. Both projects now share:
+- Template method pattern for tool implementation
+- Separation of validation and business logic
+- Automatic McpResult wrapping for consistent error handling
+- Type-safe input handling
+
+The main remaining difference is **progress tracking**, which journey-service-mcp requires for long-running operations but swiss-mobility-mcp does not need for its fast transactional operations.
 - **Cleaner separation** of concerns (caching in service layer)
 - **Stateful domain model** with explicit state transitions
 - **Two-step booking flow** ensures safety (prebooking → booking)
