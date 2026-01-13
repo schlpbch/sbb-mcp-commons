@@ -1,16 +1,17 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "../journey-service-mcp"
-		},
-		{
-			"path": "../swiss-mobility-mcp"
-		}
-	],
-	"settings": {
-		"java.compile.nullAnalysis.mode": "automatic"
-	}
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../journey-service-mcp"
+    },
+    {
+      "path": "../swiss-mobility-mcp"
+    }
+  ],
+  "settings": {
+    "java.compile.nullAnalysis.mode": "automatic",
+    "powershell.cwd": "swiss-mobility-mcp"
+  }
 }
