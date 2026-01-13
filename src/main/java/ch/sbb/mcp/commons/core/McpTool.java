@@ -75,6 +75,24 @@ public interface McpTool<T> {
     Mono<T> invoke(Map<String, Object> arguments);
 
     /**
+     * Invokes the tool with the given arguments and optional session context.
+     *
+     * <p>This method allows tools to optionally use session context for
+     * enhanced functionality like progress tracking or multi-turn operations.
+     * The default implementation delegates to {@link #invoke(Map)} and ignores
+     * the session ID.</p>
+     *
+     * <p>Tools that need session context should override this method.</p>
+     *
+     * @param arguments the tool arguments as a map
+     * @param sessionId optional session ID for session-aware tools
+     * @return a Mono containing the tool result
+     */
+    default Mono<T> invoke(Map<String, Object> arguments, java.util.Optional<String> sessionId) {
+        return invoke(arguments);
+    }
+
+    /**
      * Returns whether this tool can modify state.
      *
      * <p>Read-only tools (returning false) can be safely cached and

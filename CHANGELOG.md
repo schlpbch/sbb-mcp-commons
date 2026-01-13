@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [1.9.0] - 2026-01-13
 
+### 🏗️ Endpoint Harmonization - Week 1: Foundation
+
+**New Components for Unified MCP Architecture:**
+
+- **`BaseMcpController`** - Abstract base controller for standardized endpoint mappings
+  - Provides REST discovery endpoints (`/tools`, `/resources`, `/prompts`)
+  - Implements core MCP protocol handling (`initialize`, `tools/list`, etc.)
+  - Ensures consistent behavior across all MCP servers
+  - Reduces code duplication by ~200 lines per server
+
+- **`McpSessionConfig`** - Configuration for optional session management
+  - Enables/disables session management per server
+  - Supports both stateful (journey-service) and stateless (swiss-mobility) patterns
+  - Configurable session timeout and max sessions
+  - Documents "Optional Server State" architectural pattern
+
+- **Enhanced `McpTool` Interface** - Session-aware tool invocation
+  - Added `invoke(arguments, sessionId)` method with default implementation
+  - Allows tools to optionally use session context
+  - Backward compatible with existing tools
+  - Supports progress tracking and multi-turn operations
+
 ### 📊 Strategic Analysis
 
 **Spring AI MCP Server Evaluation:**
