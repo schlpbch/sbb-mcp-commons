@@ -1628,6 +1628,142 @@ Both approaches are valid; choose based on your use case:
 
 ---
 
-_This document is maintained in the swiss-mobility-mcp repository and should be
+### B. Spring AI MCP: Adopt Now or Later?
+
+**Status (January 2026):** Spring AI 1.1.2 is GA with comprehensive MCP support.
+
+#### What Spring AI MCP Offers
+
+| Feature                  | Spring AI MCP                        | Current sbb-mcp-commons        |
+| ------------------------ | ------------------------------------ | ------------------------------ |
+| **Tool Definition**      | `@McpTool` annotation                | `McpTool<T>` interface         |
+| **Resource Definition**  | `@McpResource` annotation            | `McpResource` interface        |
+| **Prompt Definition**    | `@McpPrompt` annotation              | `McpPromptProvider` interface  |
+| **Transport (Server)**   | STDIO, SSE, Streamable-HTTP          | SSE (custom implementation)    |
+| **Transport (Client)**   | STDIO, SSE, WebFlux SSE              | N/A (server-only)              |
+| **Protocol Version**     | 2025-06-18                           | 2025-03-26                     |
+| **Boot Starters**        | 6 starters (client + server)         | Manual configuration           |
+| **Native Image (AOT)**   | ✅ Supported (v0.4.1+)               | ❌ Not tested                  |
+| **Security**             | ⚠️ WIP (Work In Progress)           | Custom (OAuth2)                |
+
+#### Spring AI MCP Boot Starters
+
+```xml
+<!-- Server starters -->
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-mcp-server-webflux</artifactId>
+</dependency>
+
+<!-- Client starters -->
+<dependency>
+    <groupId>org.springframework.ai</groupId>
+    <artifactId>spring-ai-starter-mcp-client-webflux</artifactId>
+</dependency>
+```
+
+#### Comparison: Current vs Spring AI MCP
+
+**Current sbb-mcp-commons approach:**
+
+```java
+@Component
+public class FindTripsTool implements McpTool<McpResult<JsonNode>> {
+    @Override
+    public String name() { return "findTrips"; }
+
+    @Override
+    public String inputSchema() {
+        return """
+            { "type": "object", "properties": { ... } }
+            """;
+    }
+
+    @Override
+    public Mono<McpResult<JsonNode>> invoke(Map<String, Object> args) {
+        // Manual argument extraction
+        String origin = (String) args.get("origin");
+        // ...
+    }
+}
+```
+
+**Spring AI MCP approach:**
+
+```java
+@Component
+public class FindTripsTool {
+
+    @McpTool(description = "Find trips between origin and destination")
+    public Mono<TripResult> findTrips(
+            @McpToolArg(description = "Origin station") String origin,
+            @McpToolArg(description = "Destination station") String destination,
+            @McpToolArg(required = false) LocalDate date) {
+        // Automatic type conversion, no manual extraction
+        return tripService.findTrips(origin, destination, date);
+    }
+}
+```
+
+#### Decision Matrix
+
+| Factor                        | Adopt Now | Wait       |
+| ----------------------------- | --------- | ---------- |
+| **Greenfield project**        | ✅        |            |
+| **Existing stable codebase**  |           | ✅         |
+| **Need native image (GraalVM)** | ✅      |            |
+| **Custom transport needs**    |           | ✅         |
+| **MCP client functionality**  | ✅        |            |
+| **Production-critical**       |           | ✅ (security WIP) |
+| **Team familiar with Spring AI** | ✅     |            |
+
+#### Recommendation for SBB MCP Ecosystem
+
+**Short-term (Q1 2026): WAIT**
+
+- Current implementation is stable and working
+- Spring AI MCP security is still WIP
+- Migration effort outweighs benefits for existing projects
+- sbb-mcp-commons provides sufficient abstraction
+
+**Medium-term (Q2-Q3 2026): EVALUATE**
+
+- Monitor Spring AI 2.0 GA release
+- Evaluate security maturity
+- Prototype migration for one tool in swiss-mobility-mcp
+- Assess annotation-based approach vs interface-based
+
+**Long-term (Q4 2026+): CONSIDER MIGRATION**
+
+- If Spring AI MCP reaches security maturity
+- If native image support becomes a requirement
+- If MCP client functionality is needed (calling other MCP servers)
+
+#### Migration Path (When Ready)
+
+1. **Phase 1: Add Spring AI dependency** alongside sbb-mcp-commons
+2. **Phase 2: Create adapter** to expose existing `McpTool` as `@McpTool`
+3. **Phase 3: Gradual migration** tool by tool
+4. **Phase 4: Deprecate** sbb-mcp-commons MCP infrastructure
+5. **Phase 5: Remove** custom implementation
+
+#### What to Keep from sbb-mcp-commons
+
+Even after Spring AI MCP adoption, retain:
+
+- `BaseMcpTool` pattern (can wrap Spring AI tools)
+- `McpResult` for standardized error handling
+- `isStateModifying()` safety flag (not in Spring AI)
+- Domain-specific validation utilities
+- Caching infrastructure
+
+**References:**
+- [Spring AI MCP Documentation](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-overview.html)
+- [Spring AI 1.1.0-M2 Release Notes](https://spring.io/blog/2025/09/19/spring-ai-1-1-0-M2-mcp-focused/)
+- [Spring AI MCP Boot Starters Blog](https://spring.io/blog/2025/09/16/spring-ai-mcp-intro-blog/)
+
+---
+
+_This document is maintained in the sbb-mcp-commons repository and should be
 updated when significant architectural changes are made to any project in the
 ecosystem._
