@@ -1,7 +1,7 @@
 # SBB MCP Ecosystem: Architecture Comparison & Recommendations
 
 **Date:** January 2026  
-**Version:** 1.0  
+**Version:** 1.1  
 **Authors:** Architecture Review Team
 
 ---
@@ -35,17 +35,17 @@ different architectural philosophies** driven by their distinct domains:
 
 - **journey-service-mcp**: Optimized for exploration and discovery with stateful
   sessions, progress tracking, and SSE streaming
-- **swiss-mobility-mcp**: Optimized for transactions with stateless design,
+- **swiss-mobility-mcp**: Optimized for transactions with SSE streaming,
   safety prompts, and state-modifying flags
 
 ### Key Architectural Differences
 
 | Aspect                | journey-service-mcp          | swiss-mobility-mcp                |
 | --------------------- | ---------------------------- | --------------------------------- |
-| Session Model         | Stateful (explicit sessions) | Stateless (no sessions)           |
-| Controllers           | Dual (root + /mcp)           | Single (/mcp)                     |
+| Session Model         | Stateful (explicit sessions) | SSE-based (lightweight sessions)  |
+| Controllers           | Dual (root + /mcp)           | Single (/mcp) with handler delegation |
 | State-Modifying Tools | 0 tools                      | 4 tools (50%)                     |
-| Streaming             | SSE support                  | No SSE                            |
+| Streaming             | SSE support                  | SSE support (Claude Desktop)      |
 | Progress Tracking     | Yes (ProgressTracker)        | No                                |
 | Tool Pattern          | BaseToolHandler template     | BaseMcpTool template (v1.9.0+)    |
 | Cache Strategy        | Multi-level (24hr uniform)   | Single-level (domain-driven TTLs) |
@@ -81,9 +81,9 @@ different architectural philosophies** driven by their distinct domains:
 **Key Characteristics:**
 
 - Transactional operations (50% state-modifying tools)
-- Stateless REST API design
+- SSE streaming for Claude Desktop
 - Safety prompts for payment operations
-- Single controller with REST discovery
+- Single controller with handler delegation
 - 89 tests with comprehensive coverage
 
 **Technology Stack:**
@@ -290,7 +290,7 @@ public class McpToolHandler {
 
 ---
 
-#### swiss-mobility-mcp: Single Controller with Inline Routing
+#### swiss-mobility-mcp: Single Controller with Handler Delegation and SSE
 
 **Pattern Overview:**
 
@@ -299,7 +299,7 @@ Client Request
      ↓
 RootMcpController (/mcp)
      ↓
-Switch statement (inline routing)
+Handler delegation (McpToolHandler, McpResourceHandler, McpPromptHandler)
      ↓
 McpToolRegistry.invokeTool()
 ```
@@ -419,8 +419,8 @@ public class RootMcpController {
 - ✅ **Inline error handling** (no abstraction overhead)
 - ✅ **REST discovery endpoints** (GET /mcp/tools, /resources, /prompts)
 - ✅ **Direct tool invocation** (minimal layers)
-- ❌ **No context management** (stateless)
-- ❌ **No structured logging** (basic log statements)
+- ✅ **SSE support** for Claude Desktop bi-directional communication
+- ✅ **Handler delegation** (McpToolHandler, McpResourceHandler, McpPromptHandler)
 
 ---
 
@@ -429,8 +429,8 @@ public class RootMcpController {
 | Aspect                 | journey-service-mcp                      | swiss-mobility-mcp          |
 | ---------------------- | ---------------------------------------- | --------------------------- |
 | **Controllers**        | 2 (RootMcpController + McpController)    | 1 (RootMcpController)       |
-| **Handler Classes**    | McpToolHandler, McpSessionHandler        | None (inline)               |
-| **Context Management** | McpRequestContext (session, correlation) | None                        |
+| **Handler Classes**    | McpToolHandler, McpSessionHandler        | McpToolHandler, McpResourceHandler, McpPromptHandler |
+| **Context Management** | McpRequestContext (session, correlation) | SSE session (lightweight)   |
 | **Logging**            | Structured (McpToolInvocationLogger)     | Basic (log statements)      |
 | **Error Handling**     | McpResult unwrapping                     | Direct exceptions           |
 | **REST Endpoints**     | Yes (/mcp/tools, /resources, /prompts)   | Yes (same)                  |
@@ -469,12 +469,12 @@ McpSessionStore (interface from commons)
 - Supports session-scoped caching
 - Correlates logs across multi-turn interactions
 
-#### swiss-mobility-mcp: Stateless Server, Stateful Domain
+#### swiss-mobility-mcp: SSE-Based Sessions, Stateful Domain
 
-**Server Architecture:**
+**Server Architecture (Updated January 2026):**
 
-- No session management (no `McpSessionStore`)
-- Each API request is independent
+- SSE-based session management for Claude Desktop
+- Bi-directional communication via SSE endpoint
 - Simpler deployment (no session affinity needed)
 - Horizontal scaling without coordination
 
@@ -1163,7 +1163,7 @@ The fundamental difference is **where state lives**:
 
 | Aspect             | journey-service-mcp      | swiss-mobility-mcp            |
 | ------------------ | ------------------------ | ----------------------------- |
-| **Server State**   | ✅ Stateful (sessions)   | ❌ Stateless                  |
+| **Server State**   | ✅ Stateful (sessions)   | ✅ SSE-based (lightweight)    |
 | **Domain State**   | ❌ Stateless (read-only) | ✅ Stateful (lifecycle)       |
 | **State Storage**  | Redis (sessions)         | External API (Swiss Mobility) |
 | **State Purpose**  | Multi-turn conversation  | Business transactions         |
@@ -1488,8 +1488,8 @@ private Map<String, RedisCacheConfiguration> cacheConfigurations() {
 
 | #   | Recommendation                        | Effort | Impact |
 | --- | ------------------------------------- | ------ | ------ |
-| 1   | Add handler abstraction layer         | Medium | High   |
-| 2   | Add BaseMcpTool template              | Medium | High   |
+| 1   | ✅ Handler abstraction layer (complete) | Done   | High   |
+| 2   | ✅ BaseMcpTool template (complete)      | Done   | High   |
 | 3   | Update to protocol version 2025-03-26 | Low    | Medium |
 
 #### Implementation: Handler Abstraction
