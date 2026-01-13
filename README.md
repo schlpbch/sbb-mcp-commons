@@ -29,6 +29,11 @@ Shared infrastructure library for SBB Model Context Protocol (MCP) servers, prov
 - [Session Management](docs/guides/sessions.md) - Managing stateful sessions
 - [API Reference](docs/api/README.md) - Complete API documentation
 
+### 🔍 Strategic Analysis
+
+- [Spring AI MCP Evaluation](docs/SPRING_AI_EVALUATION.md) - Comparison with Spring AI MCP server
+- [Spring AI Gap Analysis](docs/SPRING_AI_GAP_ANALYSIS.md) - Detailed technical gap analysis
+
 ## 🚀 Quick Start
 
 ### Installation

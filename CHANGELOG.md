@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-01-13
+
+### 📊 Strategic Analysis
+
+**Spring AI MCP Server Evaluation:**
+
+- Conducted comprehensive evaluation of Spring AI MCP server as potential replacement
+- Documented 10 critical gaps in Spring AI compared to sbb-mcp-commons
+- **Decision: Continue with sbb-mcp-commons** for production services
+
+**Key Findings:**
+
+- ✅ sbb-mcp-commons provides production-grade infrastructure Spring AI lacks:
+  - Distributed session management with Redis + circuit breakers
+  - Resilience4j integration (retry, circuit breaker, rate limiting)
+  - Comprehensive validation framework
+  - Reactive API client infrastructure with retry patterns
+  - GeoJSON/JTS geometry support
+  - Request context management (correlation IDs, session tracking)
+  - Battle-tested Cloud Run deployment patterns
+
+- ⚠️ Migration to Spring AI would require:
+  - 8-12 weeks of development effort
+  - Rebuilding ~7,000+ lines of infrastructure code
+  - High risk to production stability
+  - Affecting 500+ files across consuming projects
+
+**Documentation Added:**
+
+- `docs/SPRING_AI_EVALUATION.md` - Executive summary and strategic recommendation
+- `docs/SPRING_AI_GAP_ANALYSIS.md` - Detailed technical gap analysis with code examples
+
+**Recommendation:**
+
+- Keep sbb-mcp-commons for existing production servers (journey-service-mcp, swiss-mobility-mcp)
+- Monitor Spring AI evolution for maturity improvements
+- Re-evaluate in Q3 2026 when Spring AI reaches v2.0+
+- Consider Spring AI for new MCP servers in 2026 H2
+
+### 📚 References
+
+- [Spring AI MCP Evaluation](docs/SPRING_AI_EVALUATION.md)
+- [Spring AI Gap Analysis](docs/SPRING_AI_GAP_ANALYSIS.md)
+
+---
+
 ## [1.8.0] - 2026-01-06
 
 ### 🧪 Test Coverage Improvements
