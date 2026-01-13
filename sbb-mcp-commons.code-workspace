@@ -12,6 +12,7 @@
   ],
   "settings": {
     "java.compile.nullAnalysis.mode": "automatic",
-    "powershell.cwd": "swiss-mobility-mcp"
+    "powershell.cwd": "swiss-mobility-mcp",
+    "java.configuration.updateBuildConfiguration": "interactive"
   }
 }
