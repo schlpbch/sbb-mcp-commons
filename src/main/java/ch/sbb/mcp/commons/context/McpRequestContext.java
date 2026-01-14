@@ -26,6 +26,7 @@ public class McpRequestContext {
     
     private static final ThreadLocal<String> SESSION_ID = new ThreadLocal<>();
     private static final ThreadLocal<String> CORRELATION_ID = new ThreadLocal<>();
+    private static final ThreadLocal<String> PROGRESS_TOKEN = new ThreadLocal<>();
     
     /**
      * Set the session ID for the current request.
@@ -62,6 +63,24 @@ public class McpRequestContext {
     public static java.util.Optional<String> getCorrelationId() {
         return java.util.Optional.ofNullable(CORRELATION_ID.get());
     }
+
+    /**
+     * Set the progress token for the current request.
+     *
+     * @param progressToken Progress token
+     */
+    public static void setProgressToken(String progressToken) {
+        PROGRESS_TOKEN.set(progressToken);
+    }
+
+    /**
+     * Get the progress token for the current request.
+     *
+     * @return Progress token, or empty if not set
+     */
+    public static java.util.Optional<String> getProgressToken() {
+        return java.util.Optional.ofNullable(PROGRESS_TOKEN.get());
+    }
     
     /**
      * Clear all context for the current thread.
@@ -71,6 +90,7 @@ public class McpRequestContext {
     public static void clear() {
         SESSION_ID.remove();
         CORRELATION_ID.remove();
+        PROGRESS_TOKEN.remove();
     }
     
     /**
