@@ -89,6 +89,13 @@ public class McpResourceHandler {
                         "text", serializeToJson(content)
                     ))
                 )))
+                .onErrorResume(error -> {
+                    log.error("Failed to read resource {}: {}", uri, error.getMessage(), error);
+                    return Mono.just(McpResponse.error(
+                        request.id(),
+                        McpResponse.McpError.internalError("Failed to read resource: " + error.getMessage())
+                    ));
+                })
             )
             .orElseGet(() -> Mono.just(McpResponse.error(request.id(), McpResponse.McpError.invalidParams("Resource not found: " + uri))));
     }
