@@ -5,7 +5,9 @@
       "Bash(mvn clean compile:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//c/Users/schlp/code/journey-service-mcp/**)",
+      "Bash(mvn clean package:*)"
     ]
   }
 }
