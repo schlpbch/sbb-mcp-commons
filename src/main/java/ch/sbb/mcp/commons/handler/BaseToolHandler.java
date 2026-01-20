@@ -195,6 +195,88 @@ public abstract class BaseToolHandler<INPUT, OUTPUT> {
     }
     
     /**
+     * Get an optional integer field with bounds validation.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param defaultValue the default value if field is missing
+     * @param min the minimum allowed value (inclusive)
+     * @param max the maximum allowed value (inclusive)
+     * @return the field value or default
+     * @throws IllegalArgumentException if value is outside bounds
+     */
+    protected int getOptionalIntBounded(Map<String, Object> args, String key, int defaultValue, int min, int max) {
+        int value = getOptionalInt(args, key, defaultValue);
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(
+                String.format("Parameter '%s' must be between %d and %d, got: %d", key, min, max, value)
+            );
+        }
+        return value;
+    }
+    
+    /**
+     * Get a required integer field with bounds validation.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param min the minimum allowed value (inclusive)
+     * @param max the maximum allowed value (inclusive)
+     * @return the field value
+     * @throws IllegalArgumentException if field is missing or outside bounds
+     */
+    protected int getRequiredIntBounded(Map<String, Object> args, String key, int min, int max) {
+        int value = getRequiredInt(args, key);
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(
+                String.format("Parameter '%s' must be between %d and %d, got: %d", key, min, max, value)
+            );
+        }
+        return value;
+    }
+    
+    /**
+     * Get an optional double field with bounds validation.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param defaultValue the default value if field is missing
+     * @param min the minimum allowed value (inclusive)
+     * @param max the maximum allowed value (inclusive)
+     * @return the field value or default
+     * @throws IllegalArgumentException if value is outside bounds
+     */
+    protected double getOptionalDoubleBounded(Map<String, Object> args, String key, double defaultValue, double min, double max) {
+        double value = getOptionalDouble(args, key, defaultValue);
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(
+                String.format("Parameter '%s' must be between %.2f and %.2f, got: %.2f", key, min, max, value)
+            );
+        }
+        return value;
+    }
+    
+    /**
+     * Get a required double field with bounds validation.
+     *
+     * @param args the arguments map
+     * @param key the field name
+     * @param min the minimum allowed value (inclusive)
+     * @param max the maximum allowed value (inclusive)
+     * @return the field value
+     * @throws IllegalArgumentException if field is missing or outside bounds
+     */
+    protected double getRequiredDoubleBounded(Map<String, Object> args, String key, double min, double max) {
+        double value = getRequiredDouble(args, key);
+        if (value < min || value > max) {
+            throw new IllegalArgumentException(
+                String.format("Parameter '%s' must be between %.2f and %.2f, got: %.2f", key, min, max, value)
+            );
+        }
+        return value;
+    }
+    
+    /**
      * Get a required boolean field from arguments.
      *
      * @param args the arguments map
