@@ -1,6 +1,8 @@
 package ch.sbb.mcp.commons.util;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
@@ -22,6 +24,12 @@ public class DateTimeUtil {
     private static final DateTimeFormatter ISO_TIME_HM = DateTimeFormatter.ofPattern("HH:mm");
     
     /**
+     * Swiss timezone (Europe/Zurich) - used for all SBB train schedules.
+     * Automatically handles CET (winter) and CEST (summer) transitions.
+     */
+    public static final ZoneId SWISS_TIMEZONE = ZoneId.of("Europe/Zurich");
+    
+    /**
      * Standard error message for invalid date/time format.
      */
     public static final String INVALID_FORMAT_MESSAGE = 
@@ -29,6 +37,18 @@ public class DateTimeUtil {
 
     private DateTimeUtil() {
         // Utility class
+    }
+    
+    /**
+     * Gets the current date/time in Swiss local time (Europe/Zurich timezone).
+     * 
+     * <p>This should be used instead of LocalDateTime.now() for all SBB train schedule operations,
+     * as trains operate on Swiss local time regardless of where the server or client is located.</p>
+     * 
+     * @return Current LocalDateTime in Swiss timezone (CET/CEST)
+     */
+    public static LocalDateTime nowInSwissTime() {
+        return ZonedDateTime.now(SWISS_TIMEZONE).toLocalDateTime();
     }
 
     /**
