@@ -50,6 +50,9 @@ public class ProgressTracker {
             String sessionId, 
             String token, 
             int totalSteps) {
+        if (totalSteps <= 0) {
+            throw new IllegalArgumentException("totalSteps must be positive");
+        }
         this.service = service;
         this.sessionId = sessionId;
         this.token = token;
@@ -65,6 +68,8 @@ public class ProgressTracker {
     public ProgressTracker step(String stepName) {
         if (currentStep >= totalSteps) {
             log.warn("Attempted to update completed progress tracker: {}", token);
+            // Still send progress update but stay at 99%
+            service.updateProgress(sessionId, token, 99, 100);
             return this;
         }
         
