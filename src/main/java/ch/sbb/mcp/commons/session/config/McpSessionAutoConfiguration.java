@@ -1,6 +1,7 @@
 package ch.sbb.mcp.commons.session.config;
 
 import ch.sbb.mcp.commons.session.McpSession;
+import ch.sbb.mcp.commons.session.health.McpSessionHealthIndicator;
 import ch.sbb.mcp.commons.session.impl.InMemoryMcpSessionStore;
 import ch.sbb.mcp.commons.session.impl.RedisMcpSessionStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,7 @@ import io.github.resilience4j.retry.RetryRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.health.ReactiveHealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -141,5 +143,17 @@ public class McpSessionAutoConfiguration {
         Retry retry = registry.retry("sessionStore");
         
         return retry;
+    }
+
+    /**
+     * Creates a health indicator for the session store.
+     */
+    @Bean
+    @ConditionalOnClass({ReactiveHealthIndicator.class, CircuitBreaker.class})
+    @ConditionalOnBean(name = "sessionStoreCircuitBreaker")
+    public McpSessionHealthIndicator mcpSessionHealthIndicator(
+            ch.sbb.mcp.commons.session.McpSessionStore sessionStore,
+            @org.springframework.beans.factory.annotation.Qualifier("sessionStoreCircuitBreaker") CircuitBreaker circuitBreaker) {
+        return new McpSessionHealthIndicator(sessionStore, circuitBreaker);
     }
 }
